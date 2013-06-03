@@ -1,0 +1,3 @@
+instances:
+    - name: 'service name'
+    - notify: 'datadog contact'

@@ -11,24 +11,29 @@ class SERVICECheck(AgentCheck):
         from psutil.process_iter() checking to see if process exists
         if process exists, all is well in the world, if not, tell us
         """
+        try:
+            import psutil
+        except ImportError:
+            raise Exception('You need the "ps" package to run this check")
+
         if 'name' not in instance:
             raise KeyError('The "name" of the service is mandatory')
         name = instance.get('name', None)
         # A unique ID for aggregation of events
         aggregation_key = md5(name).hexdigest()
+        processes = []
+        iter_procs = psutil.process_iter()
 
         try:
-            processes = []
-            for proc in psutil.process_iter():
-                if proc.name == name:
-                    processes.append(proc.name)
-            if name not in processes:
-                self._not_running(name, aggregation_key, instance)
-                return
+            processes = [p.name for p in iter_procs if p.name == name]
         except psutil.AccessDenied, e:
             self.log.error('Access denied to %s process' % name)
             self.log.error('Error: %s' % e)
             raise
+
+        if name not in processes:
+            self._not_running(name, aggregation_key, instance)
+            return
 
     def _not_running(self, name, aggregation_key, instance):
         """
@@ -39,6 +44,7 @@ class SERVICECheck(AgentCheck):
         Message Text would be 'sshd is not running @hipchat-ops should investigate'
         """
         notify = instance.get('notify', self.init_config.get('notify', []))
+        print notify
         self.log.info(notify)
         notify_message = ""
         if notify:
